@@ -12,6 +12,41 @@ if (!in_array($controller, $public) && empty($_SESSION['user'])) {
 }
 
 // Người dùng role=user chỉ truy cập được controller 'user' và 'thongbao'
+if (!empty($_SESSION['user']) && ($_SESSION['vai_tro'] ?? '') === 'user') {
+    $profileActions = $controller === 'user' && in_array($action, ['profile'], true);
+    $authActions = $controller === 'auth' && in_array($action, ['logout'], true);
+    $aiActions = $controller === 'ai' && in_array($action, ['chat', 'clear'], true);
+
+    if (!$profileActions && !$authActions && !$aiActions) {
+        try {
+            $db = Database::getInstance();
+            $stmt = $db->prepare(
+                "SELECT a.email, a.sdt, nt.cccd, nt.cccd_truoc, nt.cccd_sau
+                 FROM account a
+                 LEFT JOIN nguoi_thue nt ON nt.account_id = a.id
+                 WHERE a.id = ?
+                 LIMIT 1"
+            );
+            $stmt->execute([(int)($_SESSION['user_id'] ?? 0)]);
+            $profile = $stmt->fetch();
+            $missingProfile = !$profile
+                || trim((string)($profile['email'] ?? '')) === ''
+                || trim((string)($profile['sdt'] ?? '')) === ''
+                || trim((string)($profile['cccd'] ?? '')) === ''
+                || trim((string)($profile['cccd_truoc'] ?? '')) === ''
+                || trim((string)($profile['cccd_sau'] ?? '')) === '';
+
+            if ($missingProfile) {
+                header('Location: index.php?controller=user&action=profile&required=1');
+                exit;
+            }
+        } catch (Throwable $e) {
+            header('Location: index.php?controller=user&action=profile&required=1');
+            exit;
+        }
+    }
+}
+
 $adminControllers = ['khutro','phong','nguoithue','hopdong','hoadon','baocao','dashboard','dongia','xe','aiknowledge'];
 if (!empty($_SESSION['user']) && ($_SESSION['vai_tro'] ?? '') === 'user' && in_array($controller, $adminControllers)) {
     // Cho phép user xem lịch sử thanh toán và chi tiết hóa đơn

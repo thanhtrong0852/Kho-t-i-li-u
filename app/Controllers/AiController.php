@@ -14,12 +14,32 @@ class AiController
             exit;
         }
         try {
+            $fixedReply = $this->fixedSafetyReply($message);
+            if ($fixedReply !== null) {
+                echo json_encode(['ok' => true, 'reply' => $fixedReply]);
+                exit;
+            }
+
+            $billingReply = $this->fixedBillingReply($message);
+            if ($billingReply !== null) {
+                echo json_encode(['ok' => true, 'reply' => $billingReply]);
+                exit;
+            }
+
+            $workflowReply = $this->fixedWorkflowReply($message);
+            if ($workflowReply !== null) {
+                echo json_encode(['ok' => true, 'reply' => $workflowReply]);
+                exit;
+            }
+
             if (AI_PROVIDER === 'local') {
                 $reply = $this->localAI($message);
             } elseif (AI_PROVIDER === 'claude') {
                 $reply = $this->callClaude($message);
             } elseif (AI_PROVIDER === 'gemini') {
                 $reply = $this->callGemini($message);
+            } elseif (AI_PROVIDER === 'openrouter') {
+                $reply = $this->callOpenRouter($message);
             } else {
                 $reply = $this->callOpenAI($message);
             }
@@ -28,6 +48,147 @@ class AiController
             echo json_encode(['ok' => false, 'message' => $e->getMessage()]);
         }
         exit;
+    }
+
+    private function fixedSafetyReply(string $message): ?string
+    {
+        $msg = mb_strtolower($message, 'UTF-8');
+        $keywords = [
+            'ma tuy', 'ma túy', 'ma tuý', 'chat kich thich', 'chất kích thích',
+            'chất cấm', 'hang cam', 'hàng cấm', 'keo da', 'ke đá', 'can sa',
+            'cần sa', 'heroin', 'cocaine', 'thuoc lac', 'thuốc lắc',
+        ];
+
+        foreach ($keywords as $kw) {
+            if (mb_strpos($msg, $kw, 0, 'UTF-8') !== false) {
+                return "Không được sử dụng, tàng trữ hoặc tổ chức sử dụng chất kích thích/chất cấm trong phòng trọ hay khu trọ.\n\n"
+                    . "Đây là hành vi vi phạm nội quy và có thể vi phạm pháp luật. Nếu phát hiện, quản lý có quyền xử lý theo hợp đồng, yêu cầu chấm dứt thuê và báo cơ quan chức năng khi cần.\n\n"
+                    . "Nếu bạn cần hỗ trợ về sức khỏe hoặc an toàn, hãy liên hệ quản lý hoặc cơ quan y tế gần nhất.";
+            }
+        }
+
+        return null;
+    }
+
+    private function fixedBillingReply(string $message): ?string
+    {
+        $msg = mb_strtolower($message, 'UTF-8');
+        $hasMonth = preg_match('/(?:thang|tháng|t)\s*([1-9]|1[0-2])\b/u', $msg, $m);
+        $mentionsBilling = $this->containsAny($msg, [
+            'tiền', 'tien', 'hóa đơn', 'hoa don', 'thanh toán', 'thanh toan',
+            'công nợ', 'cong no', 'phải đóng', 'phai dong', 'bao nhiêu', 'bao nhieu',
+            'tháng', 'thang',
+        ]);
+
+        if (!$hasMonth || !$mentionsBilling) {
+            return null;
+        }
+
+        $thang = (int)$m[1];
+        $nam = (int)date('Y');
+
+        try {
+            $db = Database::getInstance();
+            $isAdmin = in_array($_SESSION['vai_tro'] ?? '', ['quan_ly', 'chu_tro'], true);
+
+            if (!$isAdmin) {
+                $s = $db->prepare("
+                    SELECT nt.*, hd.id AS hop_dong_id, p.id AS phong_id, p.so_phong
+                    FROM nguoi_thue nt
+                    LEFT JOIN hop_dong hd ON hd.nguoi_thue_id = nt.id AND hd.trang_thai = 'hieu_luc'
+                    LEFT JOIN phong p ON hd.phong_id = p.id
+                    WHERE nt.account_id = ?
+                    LIMIT 1
+                ");
+                $s->execute([(int)($_SESSION['user_id'] ?? 0)]);
+                $rental = $s->fetch();
+
+                if (!$rental || empty($rental['phong_id'])) {
+                    return "Bạn chưa được liên kết với phòng nào nên mình chưa tra được hóa đơn tháng $thang/$nam. Vui lòng liên hệ quản lý.";
+                }
+
+                $s = $db->prepare("SELECT * FROM hoa_don WHERE phong_id=? AND thang=? AND nam=? LIMIT 1");
+                $s->execute([(int)$rental['phong_id'], $thang, $nam]);
+                $hd = $s->fetch();
+
+                if (!$hd) {
+                    return "Chưa có hóa đơn tháng $thang/$nam cho phòng {$rental['so_phong']}. Bạn có thể hỏi quản lý để được cập nhật.";
+                }
+
+                $tt = $hd['trang_thai'] === 'da_tt' ? 'Đã thanh toán' : 'Chưa thanh toán';
+                return "Hóa đơn tháng $thang/$nam của phòng {$rental['so_phong']}:\n\n"
+                    . "• Tiền phòng: " . number_format((float)$hd['tien_phong']) . "đ\n"
+                    . "• Tiền điện: " . number_format((float)$hd['tien_dien']) . "đ\n"
+                    . "• Tiền nước: " . number_format((float)$hd['tien_nuoc']) . "đ\n"
+                    . "• Phí dịch vụ: " . number_format((float)($hd['phi_dich_vu'] ?? 0)) . "đ\n"
+                    . "• Phí xe: " . number_format((float)($hd['phi_xe'] ?? 0)) . "đ\n"
+                    . "Tổng cộng: " . number_format((float)$hd['tong_tien']) . "đ\n"
+                    . "Trạng thái: $tt";
+            }
+
+            $s = $db->prepare("
+                SELECT hd.*, p.so_phong
+                FROM hoa_don hd
+                JOIN phong p ON hd.phong_id = p.id
+                WHERE hd.thang=? AND hd.nam=?
+                ORDER BY p.so_phong
+            ");
+            $s->execute([$thang, $nam]);
+            $list = $s->fetchAll();
+
+            if (!$list) {
+                return "Chưa có hóa đơn tháng $thang/$nam.";
+            }
+
+            $paid = count(array_filter($list, fn($x) => $x['trang_thai'] === 'da_tt'));
+            $total = array_sum(array_map(fn($x) => (float)$x['tong_tien'], $list));
+            $reply = "Hóa đơn tháng $thang/$nam: " . count($list) . " phòng ($paid đã thanh toán, " . (count($list) - $paid) . " chưa thanh toán)\n\n";
+            foreach ($list as $row) {
+                $icon = $row['trang_thai'] === 'da_tt' ? '✓' : '!';
+                $reply .= "$icon Phòng {$row['so_phong']}: " . number_format((float)$row['tong_tien']) . "đ\n";
+            }
+            $reply .= "\nTổng tiền: " . number_format($total) . "đ";
+            return $reply;
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    private function fixedWorkflowReply(string $message): ?string
+    {
+        $msg = mb_strtolower($message, 'UTF-8');
+
+        if ($this->containsAny($msg, ['đổi phòng', 'doi phong', 'chuyển phòng', 'chuyen phong'])) {
+            if (in_array($_SESSION['vai_tro'] ?? '', ['quan_ly', 'chu_tro'], true)) {
+                return "Để xử lý yêu cầu chuyển phòng:\n\n"
+                    . "1. Vào mục Chuyển phòng.\n"
+                    . "2. Xem danh sách yêu cầu đang chờ duyệt.\n"
+                    . "3. Kiểm tra phòng cũ, phòng muốn chuyển đến và lý do của người thuê.\n"
+                    . "4. Nhập phản hồi nếu cần.\n"
+                    . "5. Bấm Duyệt hoặc Từ chối.\n\n"
+                    . "Lưu ý: hệ thống chỉ chuyển hợp đồng, người ở và xe sang phòng mới; các khoản bù trừ tiền phòng, tiền cọc hoặc ngày áp dụng giá mới cần quản lý xác nhận riêng.";
+            }
+
+            return "Để đổi/chuyển phòng, bạn làm như sau:\n\n"
+                . "1. Vào menu Chuyển phòng.\n"
+                . "2. Chọn phòng trống muốn chuyển đến.\n"
+                . "3. Nhập lý do chuyển phòng.\n"
+                . "4. Bấm Gửi yêu cầu.\n"
+                . "5. Chờ quản lý duyệt hoặc phản hồi.\n\n"
+                . "Bạn chỉ gửi được yêu cầu khi đang có hợp đồng thuê phòng hiệu lực. Tiền phòng giữa tháng, chênh lệch tiền cọc và ngày áp dụng giá mới sẽ được quản lý xác nhận riêng.";
+        }
+
+        return null;
+    }
+
+    private function containsAny(string $msg, array $keywords): bool
+    {
+        foreach ($keywords as $kw) {
+            if (mb_strpos($msg, $kw, 0, 'UTF-8') !== false) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public function clear()
@@ -689,6 +850,67 @@ Chức năng này chỉ dành cho quản lý.";
         if ($httpCode !== 200) { $err = json_decode($response, true); throw new \Exception($err['error']['message'] ?? "HTTP $httpCode"); }
         $data = json_decode($response, true);
         return $data['candidates'][0]['content']['parts'][0]['text'] ?? 'Không có phản hồi.';
+    }
+
+    private function callOpenRouter(string $message): string
+    {
+        $apiKey = OPENROUTER_API_KEY;
+        if (!$apiKey || $apiKey === 'paste-openrouter-key-here') {
+            return 'Chua cau hinh OPENROUTER_API_KEY trong config/ai_secret.php';
+        }
+
+        $models = array_values(array_unique([
+            OPENROUTER_MODEL,
+            'google/gemma-4-31b-it:free',
+            'openai/gpt-oss-20b:free',
+        ]));
+
+        $lastError = 'Provider returned error';
+        foreach ($models as $model) {
+            $payload = json_encode([
+                'model' => $model,
+                'messages' => [
+                    ['role' => 'system', 'content' => AI_SYSTEM_PROMPT],
+                    ['role' => 'user', 'content' => $message],
+                ],
+                'temperature' => 0.5,
+                'max_tokens' => 1024,
+            ]);
+
+            $ch = curl_init('https://openrouter.ai/api/v1/chat/completions');
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_HTTPHEADER => [
+                    'Content-Type: application/json',
+                    'Authorization: Bearer ' . $apiKey,
+                    'HTTP-Referer: ' . OPENROUTER_SITE_URL,
+                    'X-Title: ' . OPENROUTER_APP_NAME,
+                ],
+                CURLOPT_POSTFIELDS => $payload,
+                CURLOPT_TIMEOUT => 45,
+                CURLOPT_SSL_VERIFYPEER => false,
+            ]);
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
+            curl_close($ch);
+
+            if ($response === false) {
+                $lastError = $curlError ?: 'Khong goi duoc OpenRouter';
+                continue;
+            }
+
+            $data = json_decode($response, true);
+            if ($httpCode >= 200 && $httpCode < 300) {
+                return $data['choices'][0]['message']['content'] ?? 'Khong co phan hoi tu OpenRouter.';
+            }
+
+            $lastError = $data['error']['message'] ?? "OpenRouter HTTP $httpCode";
+        }
+
+        throw new \Exception($lastError);
     }
 
     private function callOpenAI(string $message): string

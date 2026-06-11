@@ -4,5 +4,6 @@ Thumbs.db
 *.tmp
 *.bak
 .env
+config/ai_secret.php
 .vscode/
 .idea/
