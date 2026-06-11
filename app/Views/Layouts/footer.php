@@ -280,7 +280,88 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 });
+function openAppConfirm(options) {
+  return new Promise(resolve => {
+    const modal = document.getElementById('appConfirmModal');
+    const title = document.getElementById('appConfirmTitle');
+    const message = document.getElementById('appConfirmMessage');
+    const ok = document.getElementById('appConfirmOk');
+    const cancel = document.getElementById('appConfirmCancel');
+    if (!modal || !title || !message || !ok || !cancel) {
+      resolve(window.confirm(options.message || 'Xác nhận thao tác?'));
+      return;
+    }
+
+    title.textContent = options.title || 'Xác nhận thao tác';
+    message.textContent = options.message || 'Bạn có chắc muốn thực hiện thao tác này?';
+    ok.textContent = options.okText || 'Đồng ý';
+    ok.classList.toggle('app-confirm-danger', options.danger !== false);
+    modal.classList.add('show');
+    cancel.focus();
+
+    const cleanup = result => {
+      modal.classList.remove('show');
+      ok.onclick = null;
+      cancel.onclick = null;
+      modal.onclick = null;
+      document.removeEventListener('keydown', onKey);
+      resolve(result);
+    };
+    const onKey = e => {
+      if (e.key === 'Escape') cleanup(false);
+      if (e.key === 'Enter') cleanup(true);
+    };
+    ok.onclick = () => cleanup(true);
+    cancel.onclick = () => cleanup(false);
+    modal.onclick = e => {
+      if (e.target === modal) cleanup(false);
+    };
+    document.addEventListener('keydown', onKey);
+  });
+}
+
+document.addEventListener('click', async function(e) {
+  const link = e.target.closest('.js-confirm-link');
+  if (!link) return;
+  e.preventDefault();
+  const ok = await openAppConfirm({
+    title: link.dataset.confirmTitle,
+    message: link.dataset.confirmMessage,
+    okText: link.dataset.confirmOk,
+    danger: link.dataset.confirmDanger !== '0',
+  });
+  if (ok) window.location.href = link.href;
+});
 </script>
+
+<style>
+.app-confirm-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.62);display:none;align-items:center;justify-content:center;z-index:9999;padding:18px;}
+.app-confirm-backdrop.show{display:flex;}
+.app-confirm-dialog{width:min(440px,100%);background:var(--card);border:1px solid var(--border2);border-radius:14px;box-shadow:0 24px 80px rgba(0,0,0,.55);padding:20px;animation:appConfirmIn .16s ease-out;}
+.app-confirm-head{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+.app-confirm-icon{width:38px;height:38px;border-radius:10px;background:rgba(247,92,92,.13);color:var(--red);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.app-confirm-title{font-size:16px;font-weight:800;color:var(--text);}
+.app-confirm-message{font-size:13px;line-height:1.6;color:var(--text2);margin:10px 0 18px;}
+.app-confirm-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;}
+.app-confirm-actions .btn{min-width:94px;justify-content:center;}
+.app-confirm-danger{background:rgba(247,92,92,.16)!important;color:var(--red)!important;border:1px solid rgba(247,92,92,.28)!important;}
+@keyframes appConfirmIn{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:520px){.app-confirm-dialog{padding:16px}.app-confirm-actions .btn{flex:1}}
+</style>
+
+<div class="app-confirm-backdrop" id="appConfirmModal" aria-hidden="true">
+  <div class="app-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="appConfirmTitle">
+    <div class="app-confirm-head">
+      <div class="app-confirm-icon">!</div>
+      <div class="app-confirm-title" id="appConfirmTitle">Xác nhận thao tác</div>
+    </div>
+    <div class="app-confirm-message" id="appConfirmMessage">Bạn có chắc muốn thực hiện thao tác này?</div>
+    <div class="app-confirm-actions">
+      <button type="button" class="btn btn-outline" id="appConfirmCancel">Hủy</button>
+      <button type="button" class="btn btn-danger" id="appConfirmOk">Đồng ý</button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>

@@ -142,7 +142,7 @@ body {
       </div>
       <div class="field">
         <label>Số điện thoại</label>
-        <div class="input-wrap"><input type="tel" name="sdt" placeholder="0901234567" value="<?= htmlspecialchars($_POST['sdt'] ?? '') ?>"/></div>
+        <div class="input-wrap"><input type="tel" name="sdt" placeholder="0901234567" required value="<?= htmlspecialchars($_POST['sdt'] ?? '') ?>"/></div>
       </div>
     </div>
     <div class="field">
@@ -177,7 +177,7 @@ body {
     </div>
     <div class="terms-row">
       <input type="checkbox" id="terms" name="terms" required/>
-      <div class="terms-txt">Tôi đồng ý với <a href="#">Điều khoản dịch vụ</a> và <a href="#">Chính sách bảo mật</a></div>
+      <div class="terms-txt">Tôi đồng ý với <a href="index.php?controller=auth&action=terms" target="_blank" rel="noopener">Điều khoản dịch vụ</a> và <a href="index.php?controller=auth&action=privacy" target="_blank" rel="noopener">Chính sách bảo mật</a></div>
     </div>
     <button type="submit" class="btn-primary" id="regBtn">Tạo tài khoản →</button>
   </form>

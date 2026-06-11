@@ -37,6 +37,7 @@ class UserController {
         $hopDong    = null;
         $phong_nguoi = [];
         $xeList     = [];
+        $sucChuaPhong = 4;
 
         if ($nguoi_thue && !empty($nguoi_thue['hop_dong_id'])) {
             $hdModel  = new HopDongModel();
@@ -45,10 +46,87 @@ class UserController {
 
             $xeModel = new XeModel();
             $xeList  = $xeModel->getByHopDong((int)$nguoi_thue['hop_dong_id']);
+
+            if ($hopDong && !empty($hopDong['phong_id'])) {
+                $db = Database::getInstance();
+                $capStmt = $db->prepare("SELECT so_nguoi FROM phong WHERE id = ?");
+                $capStmt->execute([(int)$hopDong['phong_id']]);
+                $sucChuaPhong = max(1, (int)$capStmt->fetchColumn());
+            }
         }
+
+        $yeuCauOCungModel = new YeuCauNguoiOCungModel();
+        $yeuCauOCungList = $yeuCauOCungModel->getByUser($account_id);
+        $soYeuCauOCungChoDuyet = $yeuCauOCungModel->countPendingByUser($account_id);
 
         $title = 'Hợp đồng của tôi';
         require 'app/Views/User/hop_dong.php';
+    }
+
+    public function guiYeuCauOCung() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: index.php?controller=user&action=hopDong');
+            exit;
+        }
+
+        $model = new YeuCauNguoiOCungModel();
+        try {
+            $account_id = (int)$_SESSION['user_id'];
+            $rental = $model->getCurrentRentalByAccount($account_id);
+            if (!$rental) {
+                throw new RuntimeException('Bạn chưa có hợp đồng hiệu lực để gửi yêu cầu.');
+            }
+
+            $hoTen = trim($_POST['ho_ten'] ?? '');
+            if ($hoTen === '') {
+                throw new RuntimeException('Vui lòng nhập họ tên người ở cùng.');
+            }
+            if (mb_strlen($hoTen, 'UTF-8') > 150) {
+                throw new RuntimeException('Họ tên tối đa 150 ký tự.');
+            }
+
+            $gioiTinh = $_POST['gioi_tinh'] ?? 'nam';
+            if (!in_array($gioiTinh, ['nam', 'nu', 'khac'], true)) {
+                $gioiTinh = 'nam';
+            }
+
+            $model->createRequest([
+                'user_id' => $account_id,
+                'nguoi_thue_id' => (int)$rental['nguoi_thue_id'],
+                'hop_dong_id' => (int)$rental['hop_dong_id'],
+                'phong_id' => (int)$rental['phong_id'],
+                'ho_ten' => $hoTen,
+                'cccd' => trim($_POST['cccd'] ?? ''),
+                'sdt' => trim($_POST['sdt'] ?? ''),
+                'ngay_sinh' => trim($_POST['ngay_sinh'] ?? ''),
+                'gioi_tinh' => $gioiTinh,
+                'que_quan' => trim($_POST['que_quan'] ?? ''),
+                'ly_do' => trim($_POST['ly_do'] ?? ''),
+            ]);
+
+            $noiDung = "Người thuê {$rental['ho_ten']} vừa gửi yêu cầu thêm người ở cùng.\n"
+                     . "Phòng: {$rental['so_phong']}"
+                     . (!empty($rental['ten_khu']) ? " - {$rental['ten_khu']}" : '')
+                     . "\nNgười muốn thêm: {$hoTen}";
+            $model->notifyAdmins('Có yêu cầu thêm người ở cùng mới', $noiDung, (string)$rental['ho_ten']);
+
+            header('Location: index.php?controller=user&action=hopDong&msg=roommate_sent');
+        } catch (Throwable $e) {
+            header('Location: index.php?controller=user&action=hopDong&msg=roommate_error&err=' . urlencode($e->getMessage()));
+        }
+        exit;
+    }
+
+    public function huyYeuCauOCung() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: index.php?controller=user&action=hopDong');
+            exit;
+        }
+
+        $model = new YeuCauNguoiOCungModel();
+        $ok = $model->cancelByUser((int)($_POST['id'] ?? 0), (int)($_SESSION['user_id'] ?? 0));
+        header('Location: index.php?controller=user&action=hopDong&msg=' . ($ok ? 'roommate_cancelled' : 'roommate_error'));
+        exit;
     }
 
     public function khuPhong() {
@@ -102,10 +180,17 @@ class UserController {
 
                 if (!$ho_ten) {
                     $error = 'Họ tên không được để trống!';
+                } elseif ($sdt === '') {
+                    $error = 'Số điện thoại là bắt buộc!';
+                } elseif (!preg_match('/^[0-9+\-\s]{9,20}$/', $sdt)) {
+                    $error = 'Số điện thoại không hợp lệ!';
+                } elseif ($email === '') {
+                    $error = 'Email là bắt buộc!';
+                } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    $error = 'Email không hợp lệ!';
+                } elseif ($cccd === '') {
+                    $error = 'Số CCCD/CMND là bắt buộc!';
                 } else {
-                    $db->prepare("UPDATE account SET ho_ten=?,email=?,sdt=? WHERE id=?")
-                       ->execute([$ho_ten, $email, $sdt, $account_id]);
-
                     // Upload ảnh CCCD
                     $uploadDir = 'public/uploads/cccd/';
                     if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
@@ -117,6 +202,14 @@ class UserController {
                     foreach (['cccd_truoc','cccd_sau'] as $field) {
                         if (!empty($_FILES[$field]['tmp_name'])) {
                             $ext  = strtolower(pathinfo($_FILES[$field]['name'], PATHINFO_EXTENSION));
+                            if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+                                $error = 'Ảnh CCCD chỉ chấp nhận JPG, PNG hoặc WEBP!';
+                                break;
+                            }
+                            if (($_FILES[$field]['size'] ?? 0) > 5 * 1024 * 1024) {
+                                $error = 'Mỗi ảnh CCCD tối đa 5MB!';
+                                break;
+                            }
                             $fname = $field . '_' . $account_id . '_' . time() . '.' . $ext;
                             if (move_uploaded_file($_FILES[$field]['tmp_name'], $uploadDir . $fname)) {
                                 if ($field === 'cccd_truoc') {
@@ -128,10 +221,18 @@ class UserController {
                         }
                     }
 
-                    $db->prepare("UPDATE nguoi_thue SET ho_ten=?,sdt=?,dia_chi=?,cccd=?,cccd_truoc=?,cccd_sau=?,ngay_sinh=? WHERE account_id=?")
-                       ->execute([$ho_ten, $sdt, $dia_chi, $cccd, $cccdTruoc, $cccdSau, $ngay_sinh, $account_id]);
-                    $_SESSION['ho_ten'] = $ho_ten;
-                    $success = 'Cập nhật thông tin thành công!';
+                    if ($error === '' && ($cccdTruoc === '' || $cccdSau === '')) {
+                        $error = 'Vui lòng tải lên ảnh CCCD/CMND cả mặt trước và mặt sau!';
+                    }
+
+                    if ($error === '') {
+                        $db->prepare("UPDATE account SET ho_ten=?,email=?,sdt=? WHERE id=?")
+                           ->execute([$ho_ten, $email, $sdt, $account_id]);
+                        $db->prepare("UPDATE nguoi_thue SET ho_ten=?,sdt=?,dia_chi=?,cccd=?,cccd_truoc=?,cccd_sau=?,ngay_sinh=? WHERE account_id=?")
+                           ->execute([$ho_ten, $sdt, $dia_chi, $cccd, $cccdTruoc, $cccdSau, $ngay_sinh, $account_id]);
+                        $_SESSION['ho_ten'] = $ho_ten;
+                        $success = 'Cập nhật thông tin thành công!';
+                    }
                 }
             } elseif ($action === 'change_password') {
                 $old = $_POST['old_password'] ?? '';

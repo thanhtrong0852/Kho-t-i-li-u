@@ -26,8 +26,11 @@ require_once 'app/Views/Layouts/header.php';
         <td style="color:var(--text3)"><?= date('d/m/Y',strtotime($hd['created_at'])) ?></td>
         <td style="text-align:center">
           <a href="index.php?controller=hoadon&action=thanhToan&id=<?= $hd['id'] ?>"
-             class="btn btn-success btn-xs"
-             onclick="return confirm('Xác nhận đã thu tiền phòng <?= htmlspecialchars($hd['so_phong']) ?>?')">✓ Thu tiền</a>
+             class="btn btn-success btn-xs js-confirm-link"
+             data-confirm-title="Xác nhận thu tiền"
+             data-confirm-message="Xác nhận đã thu tiền phòng <?= htmlspecialchars($hd['so_phong'], ENT_QUOTES) ?>?"
+             data-confirm-ok="Xác nhận"
+             data-confirm-danger="0">✓ Thu tiền</a>
         </td>
       </tr>
       <?php endforeach; ?>

@@ -100,7 +100,7 @@ $paymentQrOptions = [
             <div style="background:rgba(79,142,247,.06);padding:20px;text-align:center;border-bottom:1px solid rgba(79,142,247,.15);">
               <div id="qrTitle" style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">Quét QR để thanh toán</div>
               <div style="background:#fff;border-radius:14px;padding:14px;display:inline-block;margin-bottom:10px;">
-                <img id="paymentQrImage" src="" style="width:200px;height:200px;object-fit:contain;display:block;" alt="QR thanh toán"/>
+                <img id="paymentQrImage" src="" style="width:320px;height:320px;max-width:100%;object-fit:contain;display:block;" alt="QR thanh toán"/>
               </div>
               <div id="qrHint" style="font-size:11px;color:var(--text3);"></div>
             </div>
@@ -128,7 +128,7 @@ $paymentQrOptions = [
           <textarea class="form-control" name="ghi_chu_tt" rows="2" placeholder="VD: Khach da chuyen khoan luc 10:30..."><?= htmlspecialchars($pendingNote) ?></textarea>
         </div>
         <div style="display:flex;gap:10px;margin-top:6px;">
-          <button type="submit" id="btnSubmit" class="btn btn-success" style="flex:1;justify-content:center;padding:13px;font-size:14px;" onclick="return confirm('Xác nhận đã thu ' + '<?= number_format($qrAmount) ?>' + 'đ?')">✓ Xác nhận đã thu tiền mặt</button>
+          <button type="submit" id="btnSubmit" class="btn btn-success" style="flex:1;justify-content:center;padding:13px;font-size:14px;">✓ Xác nhận đã thu tiền mặt</button>
           <a href="index.php?controller=hoadon&action=index" class="btn btn-outline" style="padding:13px 18px;">Hủy</a>
         </div>
       </form>
@@ -160,6 +160,24 @@ function copyText(text, btn) {
 }
 function fallbackCopy(text, done) { const el=document.createElement('textarea');el.value=text;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);done(); }
 document.addEventListener('DOMContentLoaded', () => selectPT('<?= htmlspecialchars($suggestedMethod, ENT_QUOTES) ?>'));
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.querySelector('form[method="POST"]');
+  if (!form) return;
+  form.addEventListener('submit', async e => {
+    if (form.dataset.confirmed === '1') return;
+    e.preventDefault();
+    const ok = await openAppConfirm({
+      title: 'Xác nhận thanh toán',
+      message: 'Xác nhận đã thu <?= number_format($qrAmount) ?>đ?',
+      okText: 'Xác nhận',
+      danger: false,
+    });
+    if (ok) {
+      form.dataset.confirmed = '1';
+      form.submit();
+    }
+  });
+});
 </script>
 <?php require_once 'app/Views/Layouts/footer.php'; ?>
 

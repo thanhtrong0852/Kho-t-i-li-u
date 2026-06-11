@@ -51,8 +51,12 @@ class AuthController {
             $vai_tro  = 'user';
             $terms    = isset($_POST['terms']);
 
-            if (!$ho_ten || !$username || !$password) {
+            if (!$ho_ten || !$username || !$password || !$email || !$sdt) {
                 $error = 'Vui lòng điền đầy đủ thông tin bắt buộc!';
+            } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $error = 'Email không hợp lệ!';
+            } elseif (!preg_match('/^[0-9+\-\s]{9,20}$/', $sdt)) {
+                $error = 'Số điện thoại không hợp lệ!';
             } elseif (strlen($username) < 4) {
                 $error = 'Tên đăng nhập tối thiểu 4 ký tự!';
             } elseif (!preg_match('/^[a-zA-Z0-9_]+$/', $username)) {
@@ -98,6 +102,14 @@ class AuthController {
             }
         }
         require 'app/Views/Auth/register.php';
+    }
+
+    public function terms() {
+        require 'app/Views/Auth/terms.php';
+    }
+
+    public function privacy() {
+        require 'app/Views/Auth/privacy.php';
     }
 
     private function ensureChatJoinColumn(PDO $db): void

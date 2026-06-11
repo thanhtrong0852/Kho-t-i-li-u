@@ -8,7 +8,10 @@ require_once 'app/Views/Layouts/header.php';
     <h1>Danh sách người thuê</h1>
     <p>Người thuê được tạo tự động khi tạo hợp đồng</p>
   </div>
-  <a href="index.php?controller=hopdong&action=create" class="btn btn-primary">＋ Tạo hợp đồng mới</a>
+  <div class="header-actions">
+    <a href="index.php?controller=nguoithue&action=yeuCauOCung" class="btn btn-outline">➕ Duyệt ở cùng</a>
+    <a href="index.php?controller=hopdong&action=create" class="btn btn-primary">＋ Tạo hợp đồng mới</a>
+  </div>
 </div>
 
 <!-- THÔNG BÁO -->
@@ -121,8 +124,10 @@ require_once 'app/Views/Layouts/header.php';
              class="btn btn-outline btn-xs">✏ Sửa</a>
           <?php if(!$dangThue): ?>
           <a href="index.php?controller=nguoithue&action=delete&id=<?= $nt['id'] ?>"
-             class="btn btn-danger btn-xs"
-             onclick="return confirm('Xóa người thuê <?= htmlspecialchars($nt['ho_ten']) ?>?')">🗑</a>
+             class="btn btn-danger btn-xs js-confirm-link"
+             data-confirm-title="Xóa người thuê"
+             data-confirm-message="Xóa người thuê <?= htmlspecialchars($nt['ho_ten'], ENT_QUOTES) ?>?"
+             data-confirm-ok="Xóa">🗑</a>
           <?php endif; ?>
         </div>
       </td>

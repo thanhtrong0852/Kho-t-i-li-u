@@ -50,6 +50,57 @@ class NguoiThueController {
         exit;
     }
 
+    public function yeuCauOCung() {
+        if (!in_array($_SESSION['vai_tro'] ?? '', ['quan_ly', 'chu_tro'], true)) {
+            header('Location: index.php?controller=dashboard&action=index');
+            exit;
+        }
+
+        $ycModel = new YeuCauNguoiOCungModel();
+        $requests = $ycModel->getAll();
+        $soChoDuyet = $ycModel->countPending();
+        $title = 'Duyệt người ở cùng';
+        require 'app/Views/NguoiThue/yeu_cau_o_cung.php';
+    }
+
+    public function xuLyOCung() {
+        if (!in_array($_SESSION['vai_tro'] ?? '', ['quan_ly', 'chu_tro'], true) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: index.php?controller=nguoithue&action=yeuCauOCung');
+            exit;
+        }
+
+        $ycModel = new YeuCauNguoiOCungModel();
+        try {
+            $id = (int)($_POST['id'] ?? 0);
+            $quyetDinh = $_POST['quyet_dinh'] ?? '';
+            $phanHoi = trim($_POST['phan_hoi_ql'] ?? '');
+            $adminId = (int)($_SESSION['user_id'] ?? 0);
+            $adminName = $_SESSION['ho_ten'] ?? $_SESSION['user'] ?? 'Quản lý';
+
+            if ($id <= 0 || !in_array($quyetDinh, ['duyet', 'tu_choi'], true)) {
+                throw new RuntimeException('Thao tác xử lý không hợp lệ.');
+            }
+
+            if ($quyetDinh === 'duyet') {
+                $request = $ycModel->approve($id, $adminId, $phanHoi);
+                $noiDung = "Yêu cầu thêm {$request['ho_ten']} vào phòng {$request['so_phong']} đã được duyệt."
+                         . ($phanHoi !== '' ? "\nPhản hồi quản lý: {$phanHoi}" : '');
+                $ycModel->notifyUser((int)$request['account_id'], 'Yêu cầu thêm người ở cùng đã được duyệt', $noiDung, (string)$adminName);
+                header('Location: index.php?controller=nguoithue&action=yeuCauOCung&msg=roommate_approved');
+                exit;
+            }
+
+            $request = $ycModel->reject($id, $adminId, $phanHoi);
+            $noiDung = "Yêu cầu thêm {$request['ho_ten']} vào phòng {$request['so_phong']} chưa được chấp thuận."
+                     . ($phanHoi !== '' ? "\nPhản hồi quản lý: {$phanHoi}" : '');
+            $ycModel->notifyUser((int)$request['account_id'], 'Yêu cầu thêm người ở cùng bị từ chối', $noiDung, (string)$adminName);
+            header('Location: index.php?controller=nguoithue&action=yeuCauOCung&msg=roommate_rejected');
+        } catch (Throwable $e) {
+            header('Location: index.php?controller=nguoithue&action=yeuCauOCung&msg=roommate_error&err=' . urlencode($e->getMessage()));
+        }
+        exit;
+    }
+
     // Chỉ cho sửa thông tin, KHÔNG cho tạo mới độc lập
     public function edit() {
         $id   = (int)($_GET['id'] ?? 0);

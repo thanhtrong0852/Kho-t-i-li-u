@@ -199,7 +199,9 @@ class NguoiThueModel {
              LEFT JOIN hop_dong hd ON hd.nguoi_thue_id=nt.id AND hd.trang_thai='hieu_luc'
              LEFT JOIN phong p ON hd.phong_id=p.id
              LEFT JOIN khu_tro k ON p.khu_id=k.id
-             WHERE nt.account_id=?"
+             WHERE nt.account_id=?
+             ORDER BY hd.id IS NULL, hd.id DESC, nt.id DESC
+             LIMIT 1"
         );
         $s->execute([$account_id]);
         return $s->fetch();

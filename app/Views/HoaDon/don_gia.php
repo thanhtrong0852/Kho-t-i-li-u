@@ -14,10 +14,27 @@ require_once 'app/Views/Layouts/header.php';
 <div class="msg-alert msg-success" style="margin-bottom:18px;">✓ <?= htmlspecialchars($msg) ?></div>
 <?php endif; ?>
 
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:860px;">
+<style>
+.rate-page{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;max-width:860px;width:100%;}
+.rate-stack{display:flex;flex-direction:column;gap:14px;min-width:0;}
+.rate-form-panel{min-width:0;}
+.rate-page .card{min-width:0;}
+.rate-page input[type=range]{min-width:0;}
+@media(max-width:780px){
+  .rate-page{grid-template-columns:1fr;max-width:100%;}
+  .rate-form-panel{order:-1;}
+}
+@media(max-width:430px){
+  .rate-page .card{padding-left:14px!important;padding-right:14px!important;}
+  .rate-page .card [style*="font-size:26px"]{font-size:22px!important;overflow-wrap:anywhere;white-space:normal;}
+  .rate-page .card [style*="justify-content:space-between"]{gap:12px;}
+}
+</style>
+
+<div class="rate-page">
 
   <!-- CARD GIÁ HIỆN TẠI -->
-  <div style="display:flex;flex-direction:column;gap:14px;">
+  <div class="rate-stack">
 
     <!-- Stat điện -->
     <div class="card" style="padding:20px;">
@@ -92,7 +109,7 @@ require_once 'app/Views/Layouts/header.php';
   </div>
 
   <!-- FORM CHỈNH SỬA -->
-  <div>
+  <div class="rate-form-panel">
     <div class="card">
       <div class="card-header">
         <div class="card-title">✏️ Chỉnh sửa đơn giá</div>

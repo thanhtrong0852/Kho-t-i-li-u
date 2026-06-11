@@ -76,7 +76,11 @@ require_once 'app/Views/Layouts/header.php';
           <button type="submit" class="btn btn-primary">💾 Cập nhật</button>
           <a href="index.php?controller=nguoithue&action=index" class="btn btn-outline">Hủy</a>
           <a href="index.php?controller=nguoithue&action=delete&id=<?= $data['id'] ?>"
-             class="btn btn-danger" onclick="return confirm('Xóa người thuê này?')" style="margin-left:auto">🗑 Xóa</a>
+             class="btn btn-danger js-confirm-link"
+             data-confirm-title="Xóa người thuê"
+             data-confirm-message="Xóa người thuê này?"
+             data-confirm-ok="Xóa"
+             style="margin-left:auto">🗑 Xóa</a>
         </div>
       </form>
     </div>

@@ -36,6 +36,9 @@ $init  = mb_strtoupper(mb_substr(end($parts), 0, 1, 'UTF-8'), 'UTF-8');
 <?php if($success): ?>
 <div class="msg-alert msg-success" style="margin-bottom:16px;">✓ <?= htmlspecialchars($success) ?></div>
 <?php endif; ?>
+<?php if(!empty($_GET['required'])): ?>
+<div class="msg-alert msg-info" style="margin-bottom:16px;">Vui lòng hoàn thành hồ sơ bắt buộc: số điện thoại, email, số CCCD/CMND và ảnh CCCD/CMND 2 mặt trước khi sử dụng hệ thống.</div>
+<?php endif; ?>
 
 <div style="display:grid;grid-template-columns:260px 1fr;gap:20px;align-items:start;">
 
@@ -133,11 +136,11 @@ $init  = mb_strtoupper(mb_substr(end($parts), 0, 1, 'UTF-8'), 'UTF-8');
               </div>
               <div class="form-group">
                 <label class="form-label">Số điện thoại</label>
-                <input class="form-control" type="tel" name="sdt" value="<?= $sdt ?>" placeholder="0912345678"/>
+                <input class="form-control" type="tel" name="sdt" value="<?= $sdt ?>" placeholder="0912345678" required/>
               </div>
               <div class="form-group" style="grid-column:1/-1;">
                 <label class="form-label">Email</label>
-                <input class="form-control" type="email" name="email" value="<?= $email ?>" placeholder="example@gmail.com"/>
+                <input class="form-control" type="email" name="email" value="<?= $email ?>" placeholder="example@gmail.com" required/>
               </div>
               <div class="form-group" style="grid-column:1/-1;">
                 <label class="form-label">Địa chỉ thường trú</label>
@@ -145,7 +148,7 @@ $init  = mb_strtoupper(mb_substr(end($parts), 0, 1, 'UTF-8'), 'UTF-8');
               </div>
               <div class="form-group">
                 <label class="form-label">Số CCCD / CMND</label>
-                <input class="form-control" type="text" name="cccd" value="<?= $cccd ?>" placeholder="012345678901"/>
+                <input class="form-control" type="text" name="cccd" value="<?= $cccd ?>" placeholder="012345678901" required/>
               </div>
               <div class="form-group">
                 <label class="form-label">Ngày sinh</label>

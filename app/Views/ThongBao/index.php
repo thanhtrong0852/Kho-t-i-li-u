@@ -16,6 +16,24 @@ $ttMap = [
 ];
 ?>
 
+<style>
+.maintenance-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:20px;}
+.maintenance-stat{padding:16px;display:flex;align-items:center;gap:12px;min-width:0;}
+.maintenance-stat-icon{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;}
+.maintenance-stat-body{min-width:0;flex:1;}
+.maintenance-stat-value{font-size:22px;font-weight:800;color:var(--text);line-height:1;}
+.maintenance-stat-label{font-size:11px;color:var(--text3);font-weight:600;line-height:1.35;margin-top:4px;overflow-wrap:anywhere;}
+@media(max-width:760px){
+  .maintenance-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+  .maintenance-stat{padding:12px;gap:10px;}
+  .maintenance-stat-icon{width:36px;height:36px;font-size:17px;}
+  .maintenance-stat-value{font-size:20px;}
+  .maintenance-stat-label{font-size:10px;}
+  .maintenance-level-grid{grid-template-columns:1fr!important;}
+}
+@media(max-width:360px){.maintenance-stats{grid-template-columns:1fr;}}
+</style>
+
 <div class="page-header">
   <div class="page-title">
     <h1>🔧 Bảo trì</h1>
@@ -54,18 +72,18 @@ $ttMap = [
   $sc_dang  = count(array_filter($suaChuaList??[], fn($x)=>$x['trang_thai']==='dang_xu_ly'));
   $sc_xong  = count(array_filter($suaChuaList??[], fn($x)=>$x['trang_thai']==='da_xong'));
 ?>
-<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;">
+<div class="maintenance-stats">
   <?php foreach([
     ['🔧','Tổng yêu cầu',$sc_all,'rgba(79,142,247,.15)'],
     ['⏳','Chờ xử lý',$sc_cho,'rgba(247,169,79,.15)'],
     ['⚙','Đang xử lý',$sc_dang,'rgba(79,142,247,.15)'],
     ['✅','Đã xong',$sc_xong,'rgba(34,201,147,.12)'],
   ] as [$ico,$lbl,$val,$bg]): ?>
-  <div class="card" style="padding:16px;display:flex;align-items:center;gap:12px;">
-    <div style="width:40px;height:40px;border-radius:11px;background:<?=$bg?>;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;"><?=$ico?></div>
-    <div>
-      <div style="font-size:22px;font-weight:800;color:var(--text);"><?=$val?></div>
-      <div style="font-size:11px;color:var(--text3);font-weight:600;"><?=$lbl?></div>
+  <div class="card maintenance-stat">
+    <div class="maintenance-stat-icon" style="background:<?=$bg?>;"><?=$ico?></div>
+    <div class="maintenance-stat-body">
+      <div class="maintenance-stat-value"><?=$val?></div>
+      <div class="maintenance-stat-label"><?=$lbl?></div>
     </div>
   </div>
   <?php endforeach; ?>
@@ -175,7 +193,7 @@ $ttMap = [
       </div>
       <div class="form-group" style="margin-bottom:18px;">
         <label class="form-label">Mức độ</label>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+        <div class="maintenance-level-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
           <?php foreach([
             'nhe'        => ['🟢','Nhẹ',       'Có thể đợi'],
             'trung_binh' => ['🟡','Trung bình','Cần sửa sớm'],

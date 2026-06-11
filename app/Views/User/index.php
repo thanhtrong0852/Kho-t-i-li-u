@@ -324,7 +324,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')closeImgModa
       <div id="payQRSection" style="display:none;margin-bottom:20px;">
         <div style="background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:20px;text-align:center;">
           <div id="payQrTitle" style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:12px;">📱 Quét mã QR để thanh toán</div>
-          <div style="background:#fff;border-radius:12px;padding:14px;display:inline-block;margin-bottom:14px;"><img id="payModalQR" src="" style="width:180px;height:180px;object-fit:contain;" alt="QR"/></div>
+          <div style="background:#fff;border-radius:14px;padding:18px;display:inline-block;margin-bottom:14px;max-width:100%;"><img id="payModalQR" src="" style="width:300px;height:300px;max-width:100%;object-fit:contain;" alt="QR"/></div>
           <div id="payBankInfo" style="text-align:left;font-size:12px;color:var(--text2);line-height:2;">
             <div style="display:flex;justify-content:space-between;"><span>Ngân hàng:</span><strong style="color:var(--text);"><?= BANK_DISPLAY ?></strong></div>
             <div style="display:flex;justify-content:space-between;"><span>Số TK:</span><strong style="color:var(--text);"><?= BANK_ACCOUNT ?></strong></div>

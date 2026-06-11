@@ -201,7 +201,7 @@ $detailQrOptions = [
         <button type="button" class="btn btn-outline" onclick="showDetailQr('vnpay')">🔵 VNPay</button>
       </div>
       <div id="detailQrTitle" style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:10px;">QR Banking</div>
-      <div style="background:#fff;border-radius:12px;padding:14px;display:inline-block;margin-bottom:14px;"><img id="detailQrImage" src="<?= $qrUrl ?>" style="width:180px;height:180px;object-fit:contain;" alt="QR"/></div>
+      <div style="background:#fff;border-radius:14px;padding:18px;display:inline-block;margin-bottom:14px;max-width:100%;"><img id="detailQrImage" src="<?= $qrUrl ?>" style="width:300px;height:300px;max-width:100%;object-fit:contain;" alt="QR"/></div>
       <div id="detailBankInfo" style="text-align:left;font-size:12px;color:var(--text2);line-height:2;max-width:320px;margin:0 auto;">
         <div style="display:flex;justify-content:space-between;"><span>Ngân hàng:</span><strong style="color:var(--text);"><?= BANK_DISPLAY ?></strong></div>
         <div style="display:flex;justify-content:space-between;"><span>Số TK:</span><strong style="color:var(--text);"><?= BANK_ACCOUNT ?></strong></div>

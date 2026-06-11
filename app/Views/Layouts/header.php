@@ -207,6 +207,9 @@ textarea.form-control{resize:vertical;min-height:80px;}
     $__soChuyenPhongChoDuyet = $__role === 'user'
       ? (new ChuyenPhongModel())->countPendingByUser((int)($_SESSION['user_id'] ?? 0))
       : (new ChuyenPhongModel())->countPending();
+    $__soOCungChoDuyet = $__role === 'user'
+      ? (new YeuCauNguoiOCungModel())->countPendingByUser((int)($_SESSION['user_id'] ?? 0))
+      : (new YeuCauNguoiOCungModel())->countPending();
   ?>
   <a class="sidebar-logo" href="<?= $__role === 'user' ? 'index.php?controller=user&action=index' : 'index.php?controller=dashboard&action=index' ?>">
     <div class="logo-box">🏠</div>
@@ -265,9 +268,16 @@ textarea.form-control{resize:vertical;min-height:80px;}
       <div class="nav-icon">🏘</div>Khu & Phòng trọ
     </a>
 
-    <a class="nav-item <?= (($_GET['controller']??'')==='nguoithue')?'active':'' ?>"
+    <a class="nav-item <?= (($_GET['controller']??'')==='nguoithue' && ($_GET['action']??'index')!=='yeuCauOCung')?'active':'' ?>"
        href="index.php?controller=nguoithue&action=index">
       <div class="nav-icon">👥</div>Người thuê
+      <?php if ($__soOCungChoDuyet > 0): ?><span class="nav-badge nb-amber"><?= $__soOCungChoDuyet ?></span><?php endif; ?>
+    </a>
+
+    <a class="nav-item <?= (($_GET['controller']??'')==='nguoithue' && ($_GET['action']??'')==='yeuCauOCung')?'active':'' ?>"
+       href="index.php?controller=nguoithue&action=yeuCauOCung">
+      <div class="nav-icon">➕</div>Duyệt ở cùng
+      <?php if ($__soOCungChoDuyet > 0): ?><span class="nav-badge nb-amber"><?= $__soOCungChoDuyet ?></span><?php endif; ?>
     </a>
 
     <a class="nav-item <?= (($_GET['controller']??'')==='hopdong')?'active':'' ?>"
@@ -372,6 +382,7 @@ textarea.form-control{resize:vertical;min-height:80px;}
     </div>
     <div class="topbar-right">
       <?php if ($__role !== 'user'): ?>
+      <a class="icon-btn" href="index.php?controller=nguoithue&action=yeuCauOCung" title="Yêu cầu thêm người ở cùng">➕<?php if ($__soOCungChoDuyet > 0): ?><span class="notif-dot"></span><?php endif; ?></a>
       <a class="icon-btn" href="index.php?controller=chuyenphong&action=index" title="Yêu cầu chuyển phòng">🔄<?php if ($__soChuyenPhongChoDuyet > 0): ?><span class="notif-dot"></span><?php endif; ?></a>
       <a class="icon-btn" href="index.php?controller=hoadon&action=congNo" title="Công nợ">🔔</a>
       <a class="icon-btn" href="index.php?controller=baocao&action=index" title="Báo cáo">📊</a>
@@ -393,7 +404,12 @@ textarea.form-control{resize:vertical;min-height:80px;}
             'transfer_cancelled' =>['success','✓ Đã hủy yêu cầu chuyển phòng!'],
             'transfer_approved'  =>['success','✓ Đã duyệt và cập nhật phòng mới thành công!'],
             'transfer_rejected'  =>['info','Đã từ chối yêu cầu chuyển phòng.'],
-            'transfer_error'     =>['error','⚠ Không thể xử lý yêu cầu chuyển phòng.']];
+            'transfer_error'     =>['error','⚠ Không thể xử lý yêu cầu chuyển phòng.'],
+            'roommate_sent'      =>['success','✓ Đã gửi yêu cầu thêm người ở cùng cho quản lý!'],
+            'roommate_cancelled' =>['success','✓ Đã hủy yêu cầu thêm người ở cùng!'],
+            'roommate_approved'  =>['success','✓ Đã duyệt và thêm người ở cùng vào phòng!'],
+            'roommate_rejected'  =>['info','Đã từ chối yêu cầu thêm người ở cùng.'],
+            'roommate_error'     =>['error','⚠ Không thể xử lý yêu cầu thêm người ở cùng.']];
       $m=$map[$_GET['msg']]??['info','Thao tác thành công!'];
     ?>
     <div class="msg-alert msg-<?= $m[0] ?>" id="autoMsg">

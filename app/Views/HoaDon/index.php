@@ -85,8 +85,10 @@ $nam   = (int)($_GET['nam']  ??date('Y'));
                class="btn btn-success btn-xs"><?= !empty($hd['pending_count']) ? '✓ Xác nhận' : '💳 Thu tiền' ?></a>
             <?php endif; ?>
             <a href="index.php?controller=hoadon&action=delete&id=<?= $hd['id'] ?>"
-               class="btn btn-danger btn-xs"
-               onclick="return confirm('Xóa hóa đơn này?')">🗑</a>
+               class="btn btn-danger btn-xs js-confirm-link"
+               data-confirm-title="Xóa hóa đơn"
+               data-confirm-message="Xóa hóa đơn phòng <?= htmlspecialchars($hd['so_phong'], ENT_QUOTES) ?> tháng <?= $thang ?>/<?= $nam ?>?"
+               data-confirm-ok="Xóa">🗑</a>
           </div>
         </td>
       </tr>

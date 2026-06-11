@@ -46,6 +46,12 @@ class HopDongController {
              ORDER BY nt.ho_ten"
         );
         $nguoiThueList = $stmtNT->fetchAll();
+        $accountList = $db->query(
+            "SELECT id, username, ho_ten, sdt, email
+             FROM account
+             WHERE vai_tro = 'user'
+             ORDER BY ho_ten, username"
+        )->fetchAll();
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $phong_id  = (int)($_POST['phong_id']   ?? 0);
@@ -58,25 +64,60 @@ class HopDongController {
             $cccd      = trim($_POST['cccd']        ?? '');
             $sdt       = trim($_POST['sdt']         ?? '');
             $dia_chi   = trim($_POST['dia_chi']     ?? '');
+            $nguoi_thue_id_existing = (int)($_POST['nguoi_thue_id_existing'] ?? 0);
+            $account_id = (int)($_POST['account_id'] ?? 0);
 
             if (!$phong_id || !$ngay_bd || !$ngay_kt || !$ho_ten) {
                 $error = 'Vui lòng điền đầy đủ: phòng, ngày và họ tên người thuê!';
             } else {
                 // 1. Tạo người thuê mới
-                $this->ntModel->create($ho_ten, $cccd, $sdt, $dia_chi);
-                $nguoi_thue_id = $this->ntModel->getLastId();
+                $db = Database::getInstance();
+                $nguoi_thue_id = 0;
+
+                if ($nguoi_thue_id_existing > 0) {
+                    $existingStmt = $db->prepare(
+                        "SELECT nt.id
+                         FROM nguoi_thue nt
+                         LEFT JOIN hop_dong hd ON hd.nguoi_thue_id = nt.id AND hd.trang_thai = 'hieu_luc'
+                         WHERE nt.id = ? AND hd.id IS NULL
+                         LIMIT 1"
+                    );
+                    $existingStmt->execute([$nguoi_thue_id_existing]);
+                    $nguoi_thue_id = (int)$existingStmt->fetchColumn();
+                }
+
+                if ($nguoi_thue_id <= 0 && $account_id > 0) {
+                    $byAccountStmt = $db->prepare(
+                        "SELECT nt.id
+                         FROM nguoi_thue nt
+                         LEFT JOIN hop_dong hd ON hd.nguoi_thue_id = nt.id AND hd.trang_thai = 'hieu_luc'
+                         WHERE nt.account_id = ? AND hd.id IS NULL
+                         ORDER BY nt.id DESC
+                         LIMIT 1"
+                    );
+                    $byAccountStmt->execute([$account_id]);
+                    $nguoi_thue_id = (int)$byAccountStmt->fetchColumn();
+                }
+
+                if ($nguoi_thue_id <= 0) {
+                    $this->ntModel->create($ho_ten, $cccd, $sdt, $dia_chi);
+                    $nguoi_thue_id = $this->ntModel->getLastId();
+                }
 
                 // Auto-link account nếu tìm thấy user có cùng SĐT hoặc tên
-                $db = Database::getInstance();
-                $linkStmt = $db->prepare(
-                    "SELECT id FROM account WHERE vai_tro='user' AND (sdt=? OR ho_ten=?) LIMIT 1"
-                );
-                $linkStmt->execute([$sdt, $ho_ten]);
-                $linkedAccount = $linkStmt->fetchColumn();
-                if ($linkedAccount) {
-                    $db->prepare("UPDATE nguoi_thue SET account_id=? WHERE id=?")
-                       ->execute([$linkedAccount, $nguoi_thue_id]);
+                if ($account_id <= 0) {
+                    $linkStmt = $db->prepare(
+                        "SELECT id FROM account WHERE vai_tro='user' AND ((sdt <> '' AND sdt=?) OR ho_ten=?) LIMIT 1"
+                    );
+                    $linkStmt->execute([$sdt, $ho_ten]);
+                    $account_id = (int)$linkStmt->fetchColumn();
                 }
+
+                $db->prepare(
+                    "UPDATE nguoi_thue
+                     SET ho_ten=?, cccd=?, sdt=?, dia_chi=?, account_id=COALESCE(NULLIF(?, 0), account_id)
+                     WHERE id=?"
+                )->execute([$ho_ten, $cccd, $sdt, $dia_chi, $account_id, $nguoi_thue_id]);
 
                 // 2. Tạo hợp đồng
                 $this->model->create($phong_id, $nguoi_thue_id, $ngay_bd, $ngay_kt, $tien_coc, $ghi_chu);
